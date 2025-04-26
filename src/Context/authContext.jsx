@@ -1,26 +1,24 @@
 import { createContext, useContext, useState } from "react";
 import api from "../Services/api";
 
-
 const AuthContext = createContext();
 
-export const useAuth = () => {
-  return useContext(AuthContext);
-};
+export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(JSON.parse(localStorage.getItem("user")));
-  const [token, setToken] = useState(localStorage.getItem("token"));
+  const [user, setUser] = useState(JSON.parse(localStorage.getItem("user")) || null);
+  const [token, setToken] = useState(localStorage.getItem("token") || null);
 
   const login = async (email, password) => {
     try {
       const response = await api.login({ email, password });
 
       if (response.success) {
-        setUser(response.data.admin);
-        setToken(response.data.token);
-        localStorage.setItem("token", response.data.token);
-        localStorage.setItem("user", JSON.stringify(response.data.admin));
+        const { admin, token } = response.data;
+        setUser(admin);
+        setToken(token);
+        localStorage.setItem("user", JSON.stringify(admin));
+        localStorage.setItem("token", token);
         return { success: true };
       } else {
         return {
@@ -31,7 +29,7 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       return {
         success: false,
-        message: error.message || "An error occurred during login",
+        message: error?.response?.data?.message || error.message || "An error occurred during login",
       };
     }
   };
@@ -39,17 +37,21 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     setUser(null);
     setToken(null);
-    localStorage.removeItem("token");
     localStorage.removeItem("user");
+    localStorage.removeItem("token");
   };
 
-  const value = {
-    user,
-    token,
-    login,
-    logout,
-    isAuthenticated: !!token,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        login,
+        logout,
+        isAuthenticated: !!token,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 };
